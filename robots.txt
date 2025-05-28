@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+Disallow: /css/
+Disallow: /fonts/
+Disallow: /images/
+Disallow: /js/
+Disallow: /lib/
+
+Sitemap: https://su-u-un.github.io/sitemap.xml
