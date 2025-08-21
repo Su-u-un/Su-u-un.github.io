@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"su-u-un.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":true,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-P6R7XBLZGY"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-P6R7XBLZGY');
+</script>
+  <meta name="description" content="flow: 语音唤醒—&gt;建立（连接后端WSS &amp; ASR WSS）—&gt;录音—&gt;ASR—&gt;后端WSS—&gt;获取大模型响应的音频url—&gt;边下边播">
+<meta property="og:type" content="article">
+<meta property="og:title" content="使用安卓实现一个语音助手">
+<meta property="og:url" content="https://su-u-un.github.io/2025/04/28/Android%E8%AF%AD%E9%9F%B3%E5%8A%A9%E6%89%8B/index.html">
+<meta property="og:site_name" content="苏某的博客">
+<meta property="og:description" content="flow: 语音唤醒—&gt;建立（连接后端WSS &amp; ASR WSS）—&gt;录音—&gt;ASR—&gt;后端WSS—&gt;获取大模型响应的音频url—&gt;边下边播">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-04-28T16:00:00.000Z">
+<meta property="article:modified_time" content="2025-08-21T09:33:26.000Z">
+<meta property="article:author" content="Johnny Su">
+<meta property="article:tag" content="Android">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="语音唤醒、连续对话">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://su-u-un.github.io/2025/04/28/Android%E8%AF%AD%E9%9F%B3%E5%8A%A9%E6%89%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>使用安卓实现一个语音助手 | 苏某的博客</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-P6R7XBLZGY"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-P6R7XBLZGY');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">苏某的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://su-u-un.github.io/2025/04/28/Android%E8%AF%AD%E9%9F%B3%E5%8A%A9%E6%89%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Johnny Su">
+      <meta itemprop="description" content="这里是苏某">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="苏某的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          使用安卓实现一个语音助手
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-04-29 00:00:00" itemprop="dateCreated datePublished" datetime="2025-04-29T00:00:00+08:00">2025-04-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF%E5%88%86%E4%BA%AB/" itemprop="url" rel="index"><span itemprop="name">技术分享</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Disqus：</span>
+    
+    <a title="disqus" href="/2025/04/28/Android%E8%AF%AD%E9%9F%B3%E5%8A%A9%E6%89%8B/#disqus_thread" itemprop="discussionUrl">
+      <span class="post-comments-count disqus-comment-count" data-disqus-identifier="2025/04/28/Android语音助手/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>1.1k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>flow: 语音唤醒—&gt;建立（连接后端WSS &amp; ASR WSS）—&gt;录音—&gt;ASR—&gt;后端WSS—&gt;获取大模型响应的音频url—&gt;边下边播</p>
+<span id="more"></span>
+
+<blockquote>
+<p>2025&#x2F;06&#x2F;16更新</p>
+</blockquote>
+<p>经过长时间的测试和修复，记录一下遇到的问题。</p>
+<ol>
+<li>唤醒功能会占用录音资源，录音功能也会占用录音资源，可能出现唤醒后，资源未及时释放，导致录音失败。所以在录音之前，先手动释放录音资源。</li>
+<li>因为通过判断ASR的断句作为录音结束结果，所以当断句出现，就直接终止ASR，然后在得到后端返回消息后，重新连接ASR。”</li>
+<li>ASR有可能会因为各种原因卡住，所以应该做个超时的判断，防止长时间卡在聆听状态。</li>
+</ol>
+<blockquote>
+<p>2025&#x2F;05&#x2F;28更新</p>
+</blockquote>
+<p>将后端的asr转移至前端，采用阿里的语音识别api，减少发送录音的时间。</p>
+<ol>
+<li>由于阿里的wss如果十秒不发送信息将会停止连接，所以需要每过指定时间就发送一个空语音消息</li>
+<li>阿里的asr会返回每一句的完整结果，并且有对应type字段，通过判断type知道用户完成了一次说话</li>
+<li>判断一句话结束的间隔可以自设置，把他调高一些防止用户口吃导致提前结束语句</li>
+<li>阿里控制台可以训练简单模型和设置热词，设置后，需要在代码携带的参数中指定模型和热词，否则无效</li>
+</ol>
+<blockquote>
+<p>前文</p>
+</blockquote>
+<p>flow: 语音唤醒—&gt;建立ws连接—&gt;录音—&gt;pcm转wav转base64—&gt;ws发送录音—&gt;获取大模型响应的音频url—&gt;边下边播</p>
+<h3 id="后端"><a href="#后端" class="headerlink" title="后端"></a>后端</h3><p>简单说一下后端，后端是ws连接，建立成功后，发送wav转换的base64格式string。</p>
+<p>如果decode success，后端会返回一个url给前端播放。</p>
+<p>如果decode error，后端会关闭连接。</p>
+<h3 id="安卓"><a href="#安卓" class="headerlink" title="安卓"></a>安卓</h3><h4 id="语音唤醒使用讯飞的语音唤醒SDK"><a href="#语音唤醒使用讯飞的语音唤醒SDK" class="headerlink" title="语音唤醒使用讯飞的语音唤醒SDK"></a>语音唤醒使用讯飞的<span class="exturl" data-url="aHR0cHM6Ly93d3cueGZ5dW4uY24vZG9jL2Fzci9hd2FrZW4vQW5kcm9pZC1TREsuaHRtbA==">语音唤醒SDK<i class="fa fa-external-link-alt"></i></span></h4><ol>
+<li>进入讯飞的控制台，创建一个应用，随意创建。</li>
+<li>进入应用详情页，选择语音唤醒，(我没有用语音唤醒（新版）的sdk，没用明白。）</li>
+<li>输入你要的唤醒词并提交，前往SDK下载中心下载生成的指定SDK资源</li>
+<li>在SDK下载中心，找到【回到旧版】按钮，下载旧版的语音唤醒SDK</li>
+<li>下载完成后，将文件夹中libs内的资源全部剪贴到我们自己的安卓项目的lib里，并在AndroidManifest.xml添加权限(具体见SDK文档)</li>
+<li>在编写唤醒对象的代码中，要添加<code>SpeechUtility.createUtility(context, SpeechConstant.APPID +&quot;=你的appid&quot;);</code>，否则无法启动唤醒对象</li>
+<li>接入唤醒对象后，在唤醒成功的回调中，建立ws连接。</li>
+</ol>
+<h4 id="建立websocket连接"><a href="#建立websocket连接" class="headerlink" title="建立websocket连接"></a>建立websocket连接</h4><ol>
+<li>使用okhttp3的websocket功能，先定义好初始化ws的函数</li>
+<li>唤醒成功后，对ws进行初始化，在建立连接成功的回调中，启动录音进程</li>
+</ol>
+<h4 id="录音功能"><a href="#录音功能" class="headerlink" title="录音功能"></a>录音功能</h4><ol>
+<li>使用安卓的AudioRecord实现录音。设置一个录音标识变量，用于记录录音是否结束</li>
+<li>循环通过AudioRecord对象获取当前声音的byte，将byte写入buffer数组中</li>
+<li>录音开始后，每次都记录当前分贝。如果连续出现5个及以上的分贝值大于指定阈值，说明录音开始，进行记录</li>
+<li>判断录音开始了，记录如果连续出现2个及以上的分贝值小于指定阈值，结束录音。</li>
+<li>在结束录音后，对保存的buffer进行格式转换，先转为wav再转换为base64，通过ws发送</li>
+</ol>
+<h4 id="边下边播"><a href="#边下边播" class="headerlink" title="边下边播"></a>边下边播</h4><ol>
+<li>在ws收到消息后，得到在线音频的url</li>
+<li>使用临时文件下载在线音频，同时调用MediaPlayer对象取播放这个临时文件，实现边下边播功能</li>
+</ol>
+<h4 id="连续对话"><a href="#连续对话" class="headerlink" title="连续对话"></a>连续对话</h4><ol>
+<li>播放在线音频后，判断ws是否关闭(设置一个状态量，在ws的关闭回调中判断是否关闭)</li>
+<li>如果关闭回到唤醒状态，否则再次进入录音模式，进行第n轮对话</li>
+</ol>
+<h4 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h4><ol>
+<li>录音时候要设置最小录音时间和最大录音时间。</li>
+<li>ws和文件、录音、播放器都要对异常进行监控判断，及时抛出错误，防止app卡在某个环节。</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/Android/" rel="tag"><i class="fa fa-tag"></i> Android</a>
+              <a href="/tags/Java/" rel="tag"><i class="fa fa-tag"></i> Java</a>
+              <a href="/tags/%E8%AF%AD%E9%9F%B3%E5%94%A4%E9%86%92%E3%80%81%E8%BF%9E%E7%BB%AD%E5%AF%B9%E8%AF%9D/" rel="tag"><i class="fa fa-tag"></i> 语音唤醒、连续对话</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/04/06/%E5%B0%8F%E7%A8%8B%E5%BA%8F/" rel="prev" title="小程序开发杂记">
+      <i class="fa fa-chevron-left"></i> 小程序开发杂记
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    
+  <div class="comments">
+    <div id="disqus_thread">
+      <noscript>Please enable JavaScript to view the comments powered by Disqus.</noscript>
+    </div>
+  </div>
+  
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF"><span class="nav-number">1.</span> <span class="nav-text">后端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%89%E5%8D%93"><span class="nav-number">2.</span> <span class="nav-text">安卓</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AF%AD%E9%9F%B3%E5%94%A4%E9%86%92%E4%BD%BF%E7%94%A8%E8%AE%AF%E9%A3%9E%E7%9A%84%E8%AF%AD%E9%9F%B3%E5%94%A4%E9%86%92SDK"><span class="nav-number">2.1.</span> <span class="nav-text">语音唤醒使用讯飞的语音唤醒SDK</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BB%BA%E7%AB%8Bwebsocket%E8%BF%9E%E6%8E%A5"><span class="nav-number">2.2.</span> <span class="nav-text">建立websocket连接</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BD%95%E9%9F%B3%E5%8A%9F%E8%83%BD"><span class="nav-number">2.3.</span> <span class="nav-text">录音功能</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BE%B9%E4%B8%8B%E8%BE%B9%E6%92%AD"><span class="nav-number">2.4.</span> <span class="nav-text">边下边播</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%9E%E7%BB%AD%E5%AF%B9%E8%AF%9D"><span class="nav-number">2.5.</span> <span class="nav-text">连续对话</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">2.6.</span> <span class="nav-text">注意事项</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Johnny Su</p>
+  <div class="site-description" itemprop="description">这里是苏某</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">28</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <span class="exturl" data-url="aHR0cHM6Ly9naXRodWIuY29tL1N1LXUtdW4=" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;Su-u-un"><i class="fab fa-github fa-fw"></i></span>
+      </span>
+      <span class="links-of-author-item">
+        <span class="exturl" data-url="bWFpbHRvOnRsMDcxNTE1QGdtYWlsLmNvbQ==" title="E-Mail → mailto:tl071515@gmail.com"><i class="fa fa-envelope fa-fw"></i></span>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Johnny Su</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">17k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">1:03</span>
+</div>
+  <div class="powered-by">由 <span class="exturl theme-link" data-url="aHR0cHM6Ly9oZXhvLmlv">Hexo</span> & <span class="exturl theme-link" data-url="aHR0cHM6Ly90aGVtZS1uZXh0Lm9yZw==">NexT.Gemini</span> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script>
+  function loadCount() {
+    var d = document, s = d.createElement('script');
+    s.src = 'https://https-su-u-un-github-io.disqus.com/count.js';
+    s.id = 'dsq-count-scr';
+    (d.head || d.body).appendChild(s);
+  }
+  // defer loading until the whole page loading is completed
+  window.addEventListener('load', loadCount, false);
+</script>
+<script>
+  var disqus_config = function() {
+    this.page.url = "https://su-u-un.github.io/2025/04/28/Android%E8%AF%AD%E9%9F%B3%E5%8A%A9%E6%89%8B/";
+    this.page.identifier = "2025/04/28/Android语音助手/";
+    this.page.title = "使用安卓实现一个语音助手";
+    };
+  NexT.utils.loadComments(document.querySelector('#disqus_thread'), () => {
+    if (window.DISQUS) {
+      DISQUS.reset({
+        reload: true,
+        config: disqus_config
+      });
+    } else {
+      var d = document, s = d.createElement('script');
+      s.src = 'https://https-su-u-un-github-io.disqus.com/embed.js';
+      s.setAttribute('data-timestamp', '' + +new Date());
+      (d.head || d.body).appendChild(s);
+    }
+  });
+</script>
+
+</body>
+</html>
